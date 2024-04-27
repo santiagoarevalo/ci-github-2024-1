@@ -69,3 +69,96 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Paso a Paso
+
+### Estructura del proyecto (repositorio)
+
+```
+├── Dockerfile
+├── README.md
+├── imag/
+├── node_modules/
+├── package-lock.json
+├── package.json
+├── public/
+├── src/
+└── yarn.lock
+```
+
+### Creación del Dockerfile
+
+Creamos un archivo que se llame ***Dockerfile***, en el cual contenerizaremos la aplicación. Este Dockerfile debe contener las siguientes instrucciones:
+
+```
+FROM node:20.5.1-alpine
+RUN mkdir -p /app
+WORKDIR /app
+COPY . .
+RUN npm cache clean --force
+RUN npm install
+RUN npm run build
+EXPOSE 3000
+ENTRYPOINT ["npm", "run", "start"]
+```
+
+### Creación de la automatización con GitHub Actions
+
+Utilizaremos GitHub Actions para automatizar el proceso de contenerización y despliegue de la aplicación. A continuación se muestra el archivo de configuración YAML para GitHub Actions:
+```
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+ 
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+    - name: Docker Setup Buildx
+      uses: docker/setup-buildx-action@v3.0.0
+    - name: Docker Login
+      uses: docker/login-action@v1
+      with:
+            username: ${{ secrets.DOCKER_USERNAME }}
+            password: ${{ secrets.DOCKER_PASSWORD}}
+    - name: Build and Push Docker image
+      uses: docker/build-push-action@v5.0.0
+      with:
+          context: .  # Ruta al contexto de construcción (puede ser el directorio actual)
+          file: ./Dockerfile  # Ruta al Dockerfile
+          push: true  # Habilitar el empuje de la imagen
+          tags: ${{ secrets.DOCKER_USERNAME }}/node-ci:latest  # Nombre y etiqueta de la imagen
+      env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+```
+
+_Nota:_ 
+Para la correcta ejecución del flujo, se debe tener una cuenta en DockerHub. Como podemos ver en la parte final del YAML, se intenta acceder al username y password de Docker para poder subir la imagen a DockerHub.
+Además, es necesario configurar los Actions Secrets en GitHub de la siguiente manera:
+
+![image](https://github.com/santiagoarevalo/ci-github-2024-1/assets/71450411/6f106c75-948f-4eee-b393-2c75cf4ab547)
+
+Estos son los nombres de los dos secretos y dentro, como valor, tendría las respectivas credenciales de inicio de sesión en Docker.
+
+ ## Ejecución del flujo
+
+Teniendo correctamente configurado lo anterior, podemos ver ejecutado correctamente el flujo:
+
+![image](https://github.com/santiagoarevalo/ci-github-2024-1/assets/71450411/d2d204b4-e046-474f-b4e2-2265616b7661)
+![image](https://github.com/santiagoarevalo/ci-github-2024-1/assets/71450411/fdc2188f-dfdf-4fc2-8dcb-2cb4ac7c97a8)
+
+Y, finalmente, vemos la imagen de la aplicación desplegada en DockerHub:
+
+![image](https://github.com/santiagoarevalo/ci-github-2024-1/assets/71450411/45e3dfda-fa87-4368-9d2a-7a4f882b93a9)
+
+- [Dockerhub Image](https://hub.docker.com/r/santiagoarevalov/node-ci)
+
+
+By
+[**Santiago Arévalo Valencia**](https://github.com/santiagoarevalo) 👨🏽‍💻
